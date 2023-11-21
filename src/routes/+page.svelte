@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { fade } from 'svelte/transition';
 	import { quintOut } from 'svelte/easing';
+	import Table from '$lib/components/Table.svelte';
 
 	let showLabel = true;
 	let domains: string;
@@ -38,6 +39,8 @@
 		<button type="submit" class="bg-green-900 rounded-md font-semibold py-1">Go</button>
 	</form>
 </section>
+
+<Table />
 
 <style lang="postcss">
 	label {
