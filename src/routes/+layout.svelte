@@ -1,5 +1,7 @@
 <script lang="ts">
-  import "../app.css";
+	import '../app.css';
 </script>
 
-<slot />
+<main class="min-h-screen flex flex-col items-center">
+	<slot />
+</main>
