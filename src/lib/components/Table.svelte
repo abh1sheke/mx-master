@@ -1,4 +1,6 @@
 <script lang="ts">
+	import { save, message } from '@tauri-apps/api/dialog';
+	import { invoke } from '@tauri-apps/api/tauri';
 	import type { MXRecord } from '../types/records';
 
 	export let records: string;
@@ -8,11 +10,35 @@
 		if (records.length > 0) r = JSON.parse(records);
 	}
 
+	async function saveFile() {
+		let path: string | null;
+		try {
+			path = await save({
+				filters: [{ name: 'Excel', extensions: ['xlsx'] }]
+			});
+		} catch (e) {
+			await message(`Could not save file.\nReason: ${e}`, { title: 'MX Lookup', type: 'error' });
+			console.log(e);
+			return;
+		}
+		try {
+			let res: string = await invoke('save_to', { records, path });
+			let parsed = JSON.parse(res);
+			if (parsed.success === true) {
+				await message(`Saved file successfully at '${path as string}'`, { title: 'Success' });
+			}
+		} catch (e) {
+			await message(`Could not save file.\nReason: ${e}`, { title: 'Error', type: 'error' });
+			console.log(e);
+		}
+	}
+
 	$: records && setRecords();
 </script>
 
 <section class="my-12 md:w-2/3 w-10/12">
 	<h1 class="text-xl font-bold text-center mb-4">Results</h1>
+	<div class="flex justify-center my-4"><button class="px-2 py-1 bg-green-800 font-semibold rounded-md" on:click={saveFile}>Download as Excel</button></div>
 	<div class="bg-gray-800 rounded-md h-52 p-4 text-gray-300 max-h-52 overflow-auto">
 		<div class="res-row mb-2" id="res-head">
 			<h2>Domain</h2>
