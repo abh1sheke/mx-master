@@ -1,6 +1,5 @@
 <script lang="ts">
 	import { invoke } from '@tauri-apps/api/tauri';
-	import { listen } from '@tauri-apps/api/event';
 	import { fade } from 'svelte/transition';
 	import { quintOut } from 'svelte/easing';
 	import Table from '$lib/components/Table.svelte';
@@ -16,16 +15,8 @@
 
 	async function submit() {
 		ans = await invoke('query_batcher', { domains });
-		console.log(ans);
 		domains = '';
 	}
-
-	async function ev() {
-		await listen<string>('hello', (event) => {
-			console.log(`App is loaded, loggedIn: ${event}, token: ${event}`);
-		});
-	}
-  ev();
 </script>
 
 <section class="flex flex-col pt-10 pb-5">
