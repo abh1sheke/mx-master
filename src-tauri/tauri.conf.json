@@ -7,7 +7,7 @@
     "distDir": "../build"
   },
   "package": {
-    "productName": "mx-look",
+    "productName": "mx-master",
     "version": "0.1.0"
   },
   "tauri": {
@@ -32,7 +32,7 @@
         "icons/icon.icns",
         "icons/icon.ico"
       ],
-      "identifier": "com.mx-lookup.dev",
+      "identifier": "com.mx-master.dev",
       "longDescription": "An application for looking up MX records of domains.",
       "macOS": {
         "entitlements": null,
@@ -64,7 +64,7 @@
         "fullscreen": false,
         "height": 600,
         "resizable": true,
-        "title": "MX Lookup",
+        "title": "MX Master",
         "width": 800
       }
     ]

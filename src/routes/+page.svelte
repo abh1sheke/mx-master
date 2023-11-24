@@ -49,7 +49,7 @@
 </script>
 
 <section class="flex flex-col pt-10 pb-5">
-	<h1 class="font-black text-center text-3xl">MX Lookup</h1>
+	<h1 class="font-black text-center text-3xl">MX Master</h1>
 	<h2 class="text-center">Fetch mx records for any domain</h2>
 </section>
 
