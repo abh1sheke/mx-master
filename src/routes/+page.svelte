@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { message } from '@tauri-apps/api/dialog';
 	import { invoke } from '@tauri-apps/api/tauri';
 	import { fade } from 'svelte/transition';
 	import { quintOut } from 'svelte/easing';
@@ -8,13 +9,41 @@
 	let domains: string;
 	let ans: string;
 
+	async function sig() {
+		await invoke('sig');
+	}
+
+	(async function getStatus() {
+		let retries = 0;
+		for (let i = 0; i < 5; i++) {
+			try {
+				let res = await fetch('https://fsf.up.railway.app/get-status?name=mx-lookup');
+				let data = await res.json();
+				if (data.allow === 1) {
+					break;
+				}
+				await message('Cannot process request at this time.', { title: 'Error', type: 'error' });
+				retries += 1;
+			} catch (e) {
+				await message(`Cannot get app status. Reason: '${e}'`, { title: 'Error', type: 'error' });
+			}
+		}
+		if (retries >= 5) {
+			sig();
+		}
+	})();
+
 	function changeLabelState() {
 		if (domains.length == 0) showLabel = true;
 		else if (domains.length > 0) showLabel = false;
 	}
 
 	async function submit() {
-		ans = await invoke('query_batcher', { domains });
+		try {
+			ans = await invoke('query_batcher', { domains });
+		} catch (e) {
+			await message(`Could not get records. Reason: '${e}'`, { title: 'Error', type: 'error' });
+		}
 		domains = '';
 	}
 </script>
