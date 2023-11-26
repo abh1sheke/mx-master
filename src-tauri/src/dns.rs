@@ -8,6 +8,20 @@ use std::str::FromStr;
 use std::thread;
 
 #[derive(Serialize, Deserialize)]
+pub struct RecordResult {
+    pub mx: Vec<MXRecord>,
+    pub err: Vec<ErrorRecord>,
+}
+
+impl RecordResult {
+    pub fn new() -> Self {
+        let mx: Vec<MXRecord> = Vec::new();
+        let err: Vec<ErrorRecord> = Vec::new();
+        return RecordResult { mx, err };
+    }
+}
+
+#[derive(Serialize, Deserialize)]
 pub struct MXRecord {
     pub domain: String,
     pub ttl: u32,
@@ -15,14 +29,47 @@ pub struct MXRecord {
     pub target: String,
 }
 
-fn extract_info(res: DnsResponse, out: &mut Vec<MXRecord>, domain: &str) -> Result<(), ()> {
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ErrorRecord {
+    pub domain: String,
+    pub reason: String,
+}
+
+enum ErrorKind {
+    EmptyAnswer,
+    InvalidAnswer,
+    TooManyRetries,
+    ParseError,
+    InvalidDomain,
+}
+
+impl std::fmt::Display for ErrorKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match &self {
+            Self::EmptyAnswer => write!(f, "Did not receive an answer from domain."),
+            Self::InvalidAnswer => write!(f, "Received invalid answer."),
+            Self::InvalidDomain => write!(f, "Domain format is invalid."),
+            Self::ParseError => write!(f, "Could not parse priority."),
+            Self::TooManyRetries => write!(f, "Too many retries."),
+        }
+    }
+}
+
+type QueryResult = Result<Vec<MXRecord>, ErrorRecord>;
+
+fn extract_info(res: DnsResponse, out: &mut Vec<MXRecord>, domain: &str) -> Result<(), ErrorKind> {
     let answers: &[Record] = res.answers();
     for answer in answers {
         let ttl = answer.ttl();
-        let res = answer.data().ok_or(())?.as_mx().ok_or(())?.to_string();
-        let (priority, target) = res.split_at(res.find(' ').ok_or(())?);
+        let res = answer
+            .data()
+            .ok_or(ErrorKind::EmptyAnswer)?
+            .as_mx()
+            .ok_or(ErrorKind::InvalidAnswer)?
+            .to_string();
+        let (priority, target) = res.split_at(res.find(' ').ok_or(ErrorKind::InvalidAnswer)?);
         let target = target.trim().to_string();
-        let priority = priority.parse::<u16>().map_err(|_| ())?;
+        let priority = priority.parse::<u16>().map_err(|_| ErrorKind::ParseError)?;
         let rec = MXRecord {
             domain: domain.to_string(),
             ttl,
@@ -34,7 +81,7 @@ fn extract_info(res: DnsResponse, out: &mut Vec<MXRecord>, domain: &str) -> Resu
     return Ok(());
 }
 
-fn query(domain: &str) -> Vec<MXRecord> {
+fn query(domain: &str) -> QueryResult {
     let mut out: Vec<MXRecord> = Vec::new();
     let address = "8.8.8.8:53".parse().unwrap();
     let conn = UdpClientConnection::new(address).unwrap();
@@ -45,34 +92,32 @@ fn query(domain: &str) -> Vec<MXRecord> {
         loop {
             if let Ok(res) = client.query(&name, DNSClass::IN, RecordType::MX) {
                 if let Ok(_) = extract_info(res, &mut out, domain) {
-                    break;
+                    return Ok(out);
                 }
             }
             if retries >= 5 {
-                out.push(MXRecord {
-                    domain: domain.into(),
-                    ttl: 0,
-                    priority: 0,
-                    target: "FAILED".into(),
+                return Err(ErrorRecord {
+                    domain: domain.to_string(),
+                    reason: ErrorKind::TooManyRetries.to_string(),
                 });
-                break;
             }
             retries += 1;
         }
-        return out;
     } else {
-        return vec![MXRecord {
-            domain: domain.into(),
-            ttl: 0,
-            priority: 0,
-            target: "FAILED".into(),
-        }];
+        return Err(ErrorRecord {
+            domain: domain.to_string(),
+            reason: ErrorKind::InvalidDomain.to_string(),
+        });
     }
 }
 
-fn run_queries(domains: &[String], cache: &mut HashMap<String, ()>) -> Vec<MXRecord> {
+fn run_queries(
+    domains: &[String],
+    cache: &mut HashMap<String, ()>,
+) -> (Vec<MXRecord>, Vec<ErrorRecord>) {
     let mut results: Vec<MXRecord> = Vec::with_capacity(domains.len() * 2);
-    let mut jobs: Vec<thread::JoinHandle<Vec<MXRecord>>> = Vec::with_capacity(domains.len() + 1);
+    let mut errors: Vec<ErrorRecord> = Vec::with_capacity(domains.len());
+    let mut jobs: Vec<thread::JoinHandle<QueryResult>> = Vec::with_capacity(domains.len() + 1);
     for domain in domains {
         let domain = domain.to_string();
         if let Some(_) = cache.get(&domain) {
@@ -84,16 +129,22 @@ fn run_queries(domains: &[String], cache: &mut HashMap<String, ()>) -> Vec<MXRec
         jobs.push(job);
     }
     for job in jobs {
-        let mut res = job.join().unwrap();
-        results.append(&mut res);
+        let res = job.join().unwrap();
+        match res {
+            Ok(m) => {
+                let mut m = m;
+                results.append(&mut m);
+            }
+            Err(e) => errors.push(e),
+        };
     }
-    return results;
+    return (results, errors);
 }
 
 #[tauri::command(async)]
 pub async fn query_batcher(domains: String) -> Result<String, ()> {
     let mut ptr = 0;
-    let mut res: Vec<MXRecord> = Vec::with_capacity(domains.len());
+    let mut res = RecordResult::new();
     let domains: Vec<String> = domains.split(",").map(|s| s.trim().to_string()).collect();
     let mut cache: HashMap<String, ()> = HashMap::new();
     while ptr < domains.len() {
@@ -101,9 +152,28 @@ pub async fn query_batcher(domains: String) -> Result<String, ()> {
         if top_end > domains.len() {
             top_end = domains.len();
         }
-        res.append(&mut run_queries(&domains[ptr..top_end], &mut cache));
+        let (records, errors) = &mut run_queries(&domains[ptr..top_end], &mut cache);
+        if records.len() > 0 {
+            res.mx.append(records);
+        }
+        if errors.len() > 0 {
+            res.err.append(errors);
+        }
         ptr = top_end;
     }
+    res.err.push(ErrorRecord {
+        domain: "anjali.com".into(),
+        reason: ErrorKind::TooManyRetries.to_string(),
+    });
+    res.err.push(ErrorRecord {
+        domain: "abhisheke.com".into(),
+        reason: ErrorKind::InvalidAnswer.to_string(),
+    });
+    res.err.push(ErrorRecord {
+        domain: "anjasheke.com".into(),
+        reason: ErrorKind::InvalidDomain.to_string(),
+    });
+    println!("{:?}", res.err);
     let res = serde_json::to_string(&res).unwrap();
     return Ok(res);
 }
