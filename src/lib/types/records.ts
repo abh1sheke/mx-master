@@ -5,3 +5,8 @@ export type MXRecord = {
   target: string,
 }
 
+export type ErrorRecord = {
+  domain: string,
+  reason: string,
+}
+
