@@ -36,32 +36,34 @@
 	$: records && setRecords();
 </script>
 
-<section class="my-12 md:w-2/3 w-10/12">
-	<h1 class="text-xl font-bold text-center mb-4">Results</h1>
-	<div class="flex justify-center my-4">
-		<button class="px-2 py-1 bg-green-800 font-semibold rounded-md" on:click={saveFile}
-			>Download as Excel</button
-		>
-	</div>
-	<div class="bg-gray-800 rounded-md h-52 p-4 text-gray-300 max-h-52 overflow-auto">
-		<div class="res-row mb-2" id="res-head">
-			<h2>Domain</h2>
-			<h2>TTL</h2>
-			<h2>Priority</h2>
-			<h2>MX Target</h2>
+{#if recordsJson.mx && recordsJson.mx.length > 0}
+	<section class="my-12 md:w-2/3 w-10/12">
+		<h1 class="text-xl font-bold text-center mb-4">Results</h1>
+		<div class="flex justify-center my-4">
+			<button class="px-2 py-1 bg-green-800 font-semibold rounded-md" on:click={saveFile}
+				>Download as Excel</button
+			>
 		</div>
-		{#if recordsJson}
-			{#each recordsJson.mx as record}
-				<div class="res-row">
-					<h3>{record.domain}</h3>
-					<h3>{record.ttl}</h3>
-					<h3>{record.priority}</h3>
-					<h3>{record.target}</h3>
-				</div>
-			{/each}
-		{/if}
-	</div>
-</section>
+		<div class="bg-gray-800 rounded-md h-52 p-4 text-gray-300 max-h-52 overflow-auto">
+			<div class="res-row mb-2" id="res-head">
+				<h2>Domain</h2>
+				<h2>TTL</h2>
+				<h2>Priority</h2>
+				<h2>MX Target</h2>
+			</div>
+			{#if recordsJson}
+				{#each recordsJson.mx as record}
+					<div class="res-row">
+						<h3>{record.domain}</h3>
+						<h3>{record.ttl}</h3>
+						<h3>{record.priority}</h3>
+						<h3>{record.target}</h3>
+					</div>
+				{/each}
+			{/if}
+		</div>
+	</section>
+{/if}
 
 {#if recordsJson.err && recordsJson.err.length > 0}
 	<section class="my-12 md:w-2/3 w-10/12">
