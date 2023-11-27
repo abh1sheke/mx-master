@@ -8,7 +8,7 @@
 
 	function setRecords() {
 		if (records.length > 0) recordsJson = JSON.parse(records);
-    console.log(recordsJson);
+		console.log(recordsJson);
 	}
 
 	async function saveFile() {
@@ -63,23 +63,25 @@
 	</div>
 </section>
 
-<section class="my-12 md:w-2/3 w-10/12">
-	<h1 class="text-xl font-bold text-center mb-4">Errors</h1>
-	<div class="bg-gray-800 rounded-md h-52 p-4 text-gray-300 max-h-52 overflow-auto">
-		<div class="res-row-err mb-2" id="res-head">
-			<h2>Domain</h2>
-			<h2>Reason</h2>
+{#if recordsJson.err && recordsJson.err.length > 0}
+	<section class="my-12 md:w-2/3 w-10/12">
+		<h1 class="text-xl font-bold text-center mb-4">Errors</h1>
+		<div class="bg-gray-800 rounded-md h-52 p-4 text-gray-300 max-h-52 overflow-auto">
+			<div class="res-row-err mb-2" id="res-head">
+				<h2>Domain</h2>
+				<h2>Reason</h2>
+			</div>
+			{#if recordsJson}
+				{#each recordsJson.err as record}
+					<div class="res-row-err">
+						<h3>{record.domain}</h3>
+						<h3>{record.reason}</h3>
+					</div>
+				{/each}
+			{/if}
 		</div>
-		{#if recordsJson}
-			{#each recordsJson.err as record}
-				<div class="res-row-err">
-					<h3>{record.domain}</h3>
-					<h3>{record.reason}</h3>
-				</div>
-			{/each}
-		{/if}
-	</div>
-</section>
+	</section>
+{/if}
 
 <style lang="postcss">
 	#res-head h2 {
@@ -91,7 +93,8 @@
 	.res-row-err {
 		@apply grid grid-cols-2 font-light md:text-sm text-xs;
 	}
-	.res-row h3, .res-row-err h3 {
+	.res-row h3,
+	.res-row-err h3 {
 		@apply overflow-x-scroll h-10 overflow-y-hidden;
 	}
 </style>
