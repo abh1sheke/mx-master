@@ -97,6 +97,6 @@
 	}
 	.res-row h3,
 	.res-row-err h3 {
-		@apply overflow-x-scroll h-10 overflow-y-hidden;
+		@apply overflow-x-auto h-8 overflow-y-hidden whitespace-nowrap;
 	}
 </style>
