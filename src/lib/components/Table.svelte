@@ -23,7 +23,7 @@
 			return;
 		}
 		try {
-			let res: string = await invoke('save_to', { records, path });
+			let res: string = await invoke('save_to', { records: JSON.stringify(recordsJson.mx), path });
 			let parsed = JSON.parse(res);
 			if (parsed.success === true) {
 				await message(`Saved file successfully at '${path as string}'`, { title: 'Success' });
