@@ -7,7 +7,7 @@ use std::collections::HashMap;
 use std::str::FromStr;
 use std::thread;
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct RecordResult {
     pub mx: Vec<MXRecord>,
     pub err: Vec<ErrorRecord>,
@@ -21,7 +21,7 @@ impl RecordResult {
     }
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct MXRecord {
     pub domain: String,
     pub ttl: u32,
@@ -35,6 +35,7 @@ pub struct ErrorRecord {
     pub reason: String,
 }
 
+#[derive(Debug)]
 enum ErrorKind {
     EmptyAnswer,
     InvalidAnswer,
@@ -59,6 +60,9 @@ type QueryResult = Result<Vec<MXRecord>, ErrorRecord>;
 
 fn extract_info(res: DnsResponse, out: &mut Vec<MXRecord>, domain: &str) -> Result<(), ErrorKind> {
     let answers: &[Record] = res.answers();
+    if answers.len() < 1 {
+        return Err(ErrorKind::EmptyAnswer);
+    }
     for answer in answers {
         let ttl = answer.ttl();
         let res = answer
@@ -91,9 +95,13 @@ fn query(domain: &str) -> QueryResult {
         let mut retries = 0;
         loop {
             if let Ok(res) = client.query(&name, DNSClass::IN, RecordType::MX) {
-                if let Ok(_) = extract_info(res, &mut out, domain) {
-                    return Ok(out);
+                if let Err(e) = extract_info(res, &mut out, domain) {
+                    return Err(ErrorRecord {
+                        domain: domain.to_string(),
+                        reason: e.to_string(),
+                    });
                 }
+                return Ok(out);
             }
             if retries >= 5 {
                 return Err(ErrorRecord {
@@ -161,7 +169,6 @@ pub async fn query_batcher(domains: String) -> Result<String, ()> {
         }
         ptr = top_end;
     }
-    println!("{:?}", res.err);
     let res = serde_json::to_string(&res).unwrap();
     return Ok(res);
 }
