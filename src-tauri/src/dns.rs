@@ -161,18 +161,6 @@ pub async fn query_batcher(domains: String) -> Result<String, ()> {
         }
         ptr = top_end;
     }
-    res.err.push(ErrorRecord {
-        domain: "anjali.com".into(),
-        reason: ErrorKind::TooManyRetries.to_string(),
-    });
-    res.err.push(ErrorRecord {
-        domain: "abhisheke.com".into(),
-        reason: ErrorKind::InvalidAnswer.to_string(),
-    });
-    res.err.push(ErrorRecord {
-        domain: "anjasheke.com".into(),
-        reason: ErrorKind::InvalidDomain.to_string(),
-    });
     println!("{:?}", res.err);
     let res = serde_json::to_string(&res).unwrap();
     return Ok(res);
