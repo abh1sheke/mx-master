@@ -7,7 +7,7 @@
     "distDir": "../build"
   },
   "package": {
-    "productName": "mx-master",
+    "productName": "MX Master",
     "version": "0.1.0"
   },
   "tauri": {
